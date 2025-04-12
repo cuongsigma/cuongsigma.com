@@ -1,0 +1,26 @@
+local circle = Drawing.new("Circle")
+circle.Thickness = 2
+circle.Radius = 80
+circle.Color = Color3.fromRGB(255, 0, 255)
+circle.Filled = false
+circle.Visible = true
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Aimlock Activated",
+    Text = "SCRIPT Cuong Loaded!",
+    Duration = 5
+}) local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+local function fakeGetClosest()
+    local fakeList = Players:GetPlayers()
+    return fakeList[math.random(1, #fakeList)]
+end
+GetService("RunService").RenderStepped:Connect(function()
+    circle.Position = Vector2.new(Mouse.X, Mouse.Y)
+    local target = fakeGetClosest()
+    if target and target.Character then
+        -- Thay vì aim thật, chỉ in ra console
+        print("[Aimlock] Totally locking onto: " .. target.Name)
+    end
+end)
