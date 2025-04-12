@@ -1,0 +1,50 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+local aimEnabled = false
+local aimTarget = nil
+local maxDistance = 100
+
+function getClosestPlayer()
+	local closestPlayer = nil
+	local shortestDistance = maxDistance
+
+	for _, player in pairs(Players:GetPlayers()) do
+		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			local pos = player.Character.HumanoidRootPart.Position
+			local distance = (pos - LocalPlayer.Character.HumanoidRootPart.Position).magnitude
+
+			if distance < shortestDistance then
+				shortestDistance = distance
+				closestPlayer = player
+			end
+		end
+	end
+
+	return closestPlayer
+end
+
+Mouse.KeyDown:Connect(function(key)
+	if key == "q" then -- nhấn Q để bật/tắt aimlock
+		aimEnabled = not aimEnabled
+		if aimEnabled then
+			print("AimLock: ON")
+		else
+			print("AimLock: OFF")
+			aimTarget = nil
+		end
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	if aimEnabled then
+		aimTarget = getClosestPlayer()
+		if aimTarget and aimTarget.Character and aimTarget.Character:FindFirstChild("Head") then
+			local headPos = aimTarget.Character.Head.Position
+			local camera = workspace.CurrentCamera
+			camera.CFrame = CFrame.new(camera.CFrame.Position, headPos)
+		end
+	end
+end)
