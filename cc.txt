@@ -2,51 +2,30 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+local Prediction = 0.135
+local Target = nil
 
-local AimlockEnabled = false
-local AimlockTarget = nil
-
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 100, 0, 40)
-button.Position = UDim2.new(0.85, 0, 0.8, 0)
-button.Text = "Aimlock: OFF"
-button.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-button.TextColor3 = Color3.new(1, 1, 1)
-button.Font = Enum.Font.SourceSansBold
-button.TextScaled = true
-button.Parent = game:GetService("CoreGui")
-
--- tìm player gần chuột/camera nhất
-local function GetClosestPlayer()
-    local closest = nil
-    local shortest = math.huge
-
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("UpperTorso") then
-            local pos, onScreen = Camera:WorldToViewportPoint(player.Character.UpperTorso.Position)
-            if onScreen then
-                local distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
-                if distance < shortest then
-                    shortest = distance
-                    closest = player
-                end
+function GetClosestPlayer()
+    local closest, distance = nil, math.huge
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local pos = Camera:WorldToViewportPoint(player.Character.Head.Position)
+            local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+            if dist < distance then
+                closest = player
+                distance = dist
             end
         end
     end
-
     return closest
 end
-button.MouseButton1Click:Connect(function()
-    AimlockEnabled = not AimlockEnabled
-    AimlockTarget = AimlockEnabled and GetClosestPlayer() or nil
-    button.Text = AimlockEnabled and "Aimlock: ON" or "Aimlock: OFF"
-    button.BackgroundColor3 = AimlockEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(255, 50, 50)
-end)
 
 RunService.RenderStepped:Connect(function()
-    if AimlockEnabled and AimlockTarget and AimlockTarget.Character and AimlockTarget.Character:FindFirstChild("UpperTorso") then
-        local pos = AimlockTarget.Character.UpperTorso.Position
-        Camera.CFrame = CFrame.new(Camera.CFrame.Position, pos)
+    local newTarget = GetClosestPlayer()
+    if newTarget and newTarget.Character and newTarget.Character:FindFirstChild("Head") then
+        Target = newTarget
+        local head = Target.Character.Head
+        local predicted = head.Position + head.Velocity * Prediction
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, predicted)
     end
 end)
