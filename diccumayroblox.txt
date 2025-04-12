@@ -1,0 +1,41 @@
+local UIS = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = char:WaitForChild("HumanoidRootPart")
+
+local flying = false
+local speed = 50
+
+local btn = Instance.new("TextButton")
+btn.Text = "FLY"
+btn.Size = UDim2.new(0, 100, 0, 50)
+btn.Position = UDim2.new(0, 10, 0.8, 0)
+btn.BackgroundColor3 = Color3.new(0.2, 0.6, 1)
+btn.TextColor3 = Color3.new(1, 1, 1)
+btn.Font = Enum.Font.SourceSansBold
+btn.TextScaled = true
+btn.Parent = game:GetService("CoreGui")
+
+-- Fly function
+function fly()
+	flying = not flying
+	if flying then
+		btn.Text = "UNFLY"
+		local bv = Instance.new("BodyVelocity")
+		bv.Name = "FlyVelocity"
+		bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+		bv.Velocity = Vector3.zero
+		bv.Parent = humanoidRootPart
+
+		while flying do
+			task.wait()
+			local cam = workspace.CurrentCamera
+			bv.Velocity = cam.CFrame.LookVector * speed
+		end
+
+		bv:Destroy()
+	else
+		btn.Text = "FLY"
+	end
+end
