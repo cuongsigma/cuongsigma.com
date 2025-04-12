@@ -1,45 +1,52 @@
-getgenv().SilentAim = true
-
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
-local function getClosestPlayer()
-	local closestDistance = math.huge
-	local target = nil
+local AimlockEnabled = false
+local AimlockTarget = nil
 
-	for _, player in pairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-			local head = player.Character.Head
-			local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(head.Position)
-			if onScreen then
-				local distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
-				if distance < closestDistance then
-					closestDistance = distance
-					target = player
-				end
-			end
-		end
-	end
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 100, 0, 40)
+button.Position = UDim2.new(0.85, 0, 0.8, 0)
+button.Text = "Aimlock: OFF"
+button.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Font = Enum.Font.SourceSansBold
+button.TextScaled = true
+button.Parent = game:GetService("CoreGui")
 
-	return target
+-- tìm player gần chuột/camera nhất
+local function GetClosestPlayer()
+    local closest = nil
+    local shortest = math.huge
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("UpperTorso") then
+            local pos, onScreen = Camera:WorldToViewportPoint(player.Character.UpperTorso.Position)
+            if onScreen then
+                local distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                if distance < shortest then
+                    shortest = distance
+                    closest = player
+                end
+            end
+        end
+    end
+
+    return closest
 end
+button.MouseButton1Click:Connect(function()
+    AimlockEnabled = not AimlockEnabled
+    AimlockTarget = AimlockEnabled and GetClosestPlayer() or nil
+    button.Text = AimlockEnabled and "Aimlock: ON" or "Aimlock: OFF"
+    button.BackgroundColor3 = AimlockEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(255, 50, 50)
+end)
 
--- Hook
-local mt = getrawmetatable(game)
-local backup = mt.__namecall
-setreadonly(mt, false)
-
-mt.__namecall = newcclosure(function(...)
-	local args = {...}
-	local method = getnamecallmethod()
-	if SilentAim and tostring(method) == "FireServer" and tostring(args[2]) == "UpdateMousePos" then
-		local target = getClosestPlayer()
-		if target and target.Character and target.Character:FindFirstChild("Head") then
-			args[3] = target.Character.Head.Position + Vector3.new(0, 0.1, 0)
-		end
-		return backup(unpack(args))
-	end
-	return backup(...)
+RunService.RenderStepped:Connect(function()
+    if AimlockEnabled and AimlockTarget and AimlockTarget.Character and AimlockTarget.Character:FindFirstChild("UpperTorso") then
+        local pos = AimlockTarget.Character.UpperTorso.Position
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, pos)
+    end
 end)
