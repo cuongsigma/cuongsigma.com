@@ -1,50 +1,121 @@
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local Prediction = 0.135
+local Target = nil
+local SilentLockEnabled = false
 
-local aimEnabled = false
-local aimTarget = nil
-local maxDistance = 100
-
-function getClosestPlayer()
-	local closestPlayer = nil
-	local shortestDistance = maxDistance
-
-	for _, player in pairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			local pos = player.Character.HumanoidRootPart.Position
-			local distance = (pos - LocalPlayer.Character.HumanoidRootPart.Position).magnitude
-
-			if distance < shortestDistance then
-				shortestDistance = distance
-				closestPlayer = player
-			end
-		end
-	end
-
-	return closestPlayer
-end
-
-Mouse.KeyDown:Connect(function(key)
-	if key == "q" then -- nhấn Q để bật/tắt aimlock
-		aimEnabled = not aimEnabled
-		if aimEnabled then
-			print("AimLock: ON")
-		else
-			print("AimLock: OFF")
-			aimTarget = nil
-		end
-	end
+-- Gắn GUI vào CoreGui để không mất khi die
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SilentLockGui"
+ScreenGui.ResetOnSpawn = false
+pcall(function()
+    ScreenGui.Parent = game:GetService("CoreGui")
 end)
 
+-- Nút bật/tắt Silent Lock
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Parent = ScreenGui
+ToggleButton.Size = UDim2.new(0, 180, 0, 50)
+ToggleButton.Position = UDim2.new(0.5, -90, 0.5, -25)
+ToggleButton.Text = "Bật Silent Lock"
+ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextScaled = true
+ToggleButton.Font = Enum.Font.GothamBold
+ToggleButton.BorderSizePixel = 0
+ToggleButton.AutoButtonColor = false
+ToggleButton.BackgroundTransparency = 0.1
+ToggleButton.ClipsDescendants = true
+ToggleButton.AnchorPoint = Vector2.new(0, 0)
+
+-- Bo góc đẹp
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = ToggleButton
+
+-- Thêm chữ "By Cuong Sigma"
+local Label = Instance.new("TextLabel")
+Label.Parent = ScreenGui
+Label.Size = UDim2.new(0, 180, 0, 25)
+Label.Position = UDim2.new(0.5, -90, 0.5, 30)
+Label.Text = "By Cuong Sigma"
+Label.BackgroundTransparency = 1
+Label.TextColor3 = Color3.fromRGB(255, 0, 0)
+Label.TextStrokeTransparency = 0.2
+Label.TextScaled = true
+Label.Font = Enum.Font.GothamSemibold
+
+-- Kéo nút GUI trên mobile
+local dragging = false
+local dragStart, startPos
+
+ToggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = ToggleButton.Position
+    end
+end)
+
+ToggleButton.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.Touch then
+        local delta = input.Position - dragStart
+        ToggleButton.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+        Label.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y + 55
+        )
+    end
+end)
+
+ToggleButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+-- Tìm player gần nhất
+function GetClosestPlayer()
+    local closest, distance = nil, math.huge
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local pos = Camera:WorldToViewportPoint(player.Character.Head.Position)
+            local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+            if dist < distance then
+                closest = player
+                distance = dist
+            end
+        end
+    end
+    return closest
+end
+
+-- Bật/tắt lock
+ToggleButton.MouseButton1Click:Connect(function()
+    SilentLockEnabled = not SilentLockEnabled
+    if SilentLockEnabled then
+        ToggleButton.Text = "Tắt Silent Lock"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+    else
+        ToggleButton.Text = "Bật Silent Lock"
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    end
+end)
+
+-- Silent Lock logic
 RunService.RenderStepped:Connect(function()
-	if aimEnabled then
-		aimTarget = getClosestPlayer()
-		if aimTarget and aimTarget.Character and aimTarget.Character:FindFirstChild("Head") then
-			local headPos = aimTarget.Character.Head.Position
-			local camera = workspace.CurrentCamera
-			camera.CFrame = CFrame.new(camera.CFrame.Position, headPos)
-		end
-	end
+    if SilentLockEnabled then
+        local newTarget = GetClosestPlayer()
+        if newTarget and newTarget.Character and newTarget.Character:FindFirstChild("Head") then
+            Target = newTarget
+            local head = Target.Character.Head
+            local predicted = head.Position + head.Velocity * Prediction
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, predicted)
+        end
+    end
 end)
